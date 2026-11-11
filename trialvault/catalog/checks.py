@@ -130,10 +130,22 @@ class DatasetChecks:
             if actual != version["payload"]["parents"]:
                 reject("integrity", "lineage metadata differs")
             version_count += 1
+        experiment_runs = 0
+        if self.db.one(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='experiment_runs'"
+        ):
+            for row in self.db.rows(
+                "SELECT experiment,result,digest,model_artifact FROM experiment_runs ORDER BY experiment"
+            ):
+                if digest(parse_json(row["result"])) != row["digest"]:
+                    reject("integrity", "experiment run digest mismatch")
+                self.artifacts.verify(row["model_artifact"])
+                experiment_runs += 1
         return {
             "sqlite": "ok",
             "audit": audit,
             "versions": version_count,
+            "experiment_runs": experiment_runs,
             "artifacts": len(self.artifacts.inventory()),
         }
 
@@ -145,6 +157,11 @@ class DatasetChecks:
             referenced.update(
                 item["artifact"] for item in parse_json(row["manifest"])["versions"]
             )
+        if self.db.one(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='experiment_runs'"
+        ):
+            for row in self.db.rows("SELECT model_artifact FROM experiment_runs"):
+                referenced.add(row["model_artifact"])
         with self.db.transaction():
             return self.artifacts.remove_unreferenced(referenced, dry_run)
 

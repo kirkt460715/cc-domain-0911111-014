@@ -96,6 +96,19 @@ def dispatch(vault, request):
         return vault.queries.lookup(**options)
     if action == "storage_usage":
         return vault.queries.storage_usage()
+    if action == "experiment_define":
+        return vault.experiments.define(options["id"], options["definition"])
+    if action == "experiment_run":
+        return vault.experiments.run(options["id"])
+    if action == "experiment":
+        return vault.experiments.get(options["id"])
+    if action == "experiments":
+        return vault.experiments.list()
+    if action == "experiment_validity":
+        return vault.experiments.validity(options["id"])
+    if action == "experiment_predict":
+        experiment_id = options.pop("id")
+        return vault.experiments.predict(experiment_id, **options)
     reject("input", "unknown action", action=action)
 
 
